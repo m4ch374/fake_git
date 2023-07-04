@@ -1,0 +1,61 @@
+#!/bin/dash
+
+# =====================================
+# Syntax checking
+# =====================================
+default_repo=".pig"
+
+if ! test -d "$default_repo"
+then
+    echo "$0: error: pigs repository directory $default_repo not found"
+    exit 1
+fi 
+
+if [ $# -ne 1 ] || ! echo "$@" | grep ':' > /dev/null
+then
+    echo "usage: $0 <commit>:<filename>">&2
+    exit 1
+fi 
+
+# =====================================
+# Main
+# =====================================
+commit_num=$(echo "$@" | cut -d: -f1)
+file_name=$(echo "$@" | cut -d: -f2)
+
+# If commit not specified, show the one in index
+if [ -z "$commit_num" ]
+then
+    index_file="$default_repo/index"
+    if ! grep -E "^$file_name" "$index_file" > /dev/null
+    then
+        echo "$0: error: '$file_name' not found in index" >&2
+        exit 1 
+    fi 
+
+    cat "$default_repo/objects/$(sed -nE "s/^$file_name (.*)$/\1/p" "$index_file")"
+    exit 0
+fi 
+
+curr_branch=$(cat $default_repo/HEAD)
+history_file="$default_repo/commits/$curr_branch"
+
+all_commits=$(cut -f1 -d' ' "$history_file")
+
+if ! echo "$all_commits" | grep -E "^$commit_num$" > /dev/null
+then
+    echo "$0: error: unknown commit '$commit_num'" >&2
+    exit 1
+fi 
+
+tree_referred="$default_repo/objects/$(sed -nE "s/^$commit_num (.*)$/\1/p" "$history_file")"
+
+all_files=$(cut -f1 -d' ' "$tree_referred")
+if ! echo "$all_files" | grep -E "^$file_name$" > /dev/null
+then
+    echo "$0: error: '$file_name' not found in commit $commit_num" >&2
+    exit 1
+fi 
+
+file_referred="$default_repo/objects/$(sed -nE "s/^$file_name (.*)$/\1/p" "$tree_referred")"
+cat "$file_referred"

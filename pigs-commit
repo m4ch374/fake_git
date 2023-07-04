@@ -1,0 +1,124 @@
+#!/bin/dash
+
+# =====================================
+# Syntax checking
+# =====================================
+default_repo=".pig"
+
+if ! test -d "$default_repo"
+then
+    echo "$0: error: pigs repository directory $default_repo not found" >&2
+    exit 1
+fi 
+
+error_msg="usage: $0 [-a] -m commit-message"
+
+if [ $# -eq 0 ]
+then
+    echo "$error_msg" >&2
+    exit 1
+fi
+
+if ! [ "$1" = "-m" ]
+then
+    echo "$error_msg" >&2
+    exit 1
+fi
+
+if [ -z "$2" ]
+then
+    echo "$error_msg" >&2
+    exit 1
+fi 
+
+commit_msg="$2"
+
+# =====================================
+# main
+# =====================================
+no_commits="nothing to commit"
+branch_info="$default_repo/BRANCHES"
+index_file="$default_repo/index"
+
+staged_files=$(cat $index_file)
+
+curr_branch=$(cat $default_repo/HEAD)
+curr_tree=$(cat $branch_info | grep -E "^$curr_branch" | cut -d' ' -f2)
+
+log_file="$default_repo/logs/$curr_branch"
+if [ -z "$(cat "$log_file")" ] && [ -z "$staged_files" ]
+then
+    echo "$no_commits"
+    exit 0
+fi 
+
+# create new tree
+tmp_tree=$(mktemp)
+curr_tree_file="$default_repo/objects/$curr_tree"
+
+if ! { [ "$curr_tree" = "empty" ] || [ -z "$(cat "$curr_tree_file")" ]; }
+then
+    cat "$curr_tree_file" > "$tmp_tree"
+fi 
+
+while IFS= read -r line
+do 
+    curr_file=$(echo "$line" | cut -d' ' -f1)
+
+    # deletion
+    if ! test -f "$curr_file"
+    then
+        tmp=$(sed -E "s/^$curr_file .*$//" "$tmp_tree")
+        if [ -z "$tmp" ]
+        then
+            : > "$tmp_tree"
+        else 
+            echo "$tmp" > "$tmp_tree" 
+        fi 
+        continue
+    fi 
+
+    if grep -E "^$curr_file" "$tmp_tree" > /dev/null
+    then
+        tmp=$(sed -E "s/^$curr_file .*$/$line/" "$tmp_tree") 
+        echo "$tmp" > "$tmp_tree"
+    else 
+        echo "$line" >> "$tmp_tree"
+    fi 
+    
+done < "$index_file"
+
+tmp_tree_hash=$(sha1sum "$tmp_tree" | cut -d' ' -f1)
+
+if [ "$curr_tree" = "$tmp_tree_hash" ]
+then
+    echo "$no_commits"
+    rm "$tmp_tree"
+    exit 0
+fi 
+
+if [ -z "$tmp_tree" ]
+then 
+    : > "$default_repo/objects/$tmp_tree_hash"
+else 
+    cat "$tmp_tree" > "$default_repo/objects/$tmp_tree_hash"
+fi 
+
+new_info=$(sed -E "s/^$curr_branch .*$/$curr_branch $tmp_tree_hash/" "$branch_info")
+echo "$new_info" > "$branch_info"
+
+# logging
+commit_num=0
+if [ -n "$(cat "$log_file")" ]
+then
+    curr_num=$(tail -n1 "$log_file" | cut -d' ' -f1)
+    commit_num=$((curr_num + 1))
+fi 
+
+history_file="$default_repo/commits/$curr_branch"
+
+echo "$commit_num $commit_msg" >> "$log_file"
+echo "$commit_num $tmp_tree_hash" >> "$history_file"
+echo "Committed as commit $commit_num"
+
+rm "$tmp_tree"
