@@ -7,7 +7,7 @@ default_repo=".pig"
 
 if ! test -d "$default_repo"
 then
-    echo "$0: error: pigs repository $default_repo not found"
+    echo "$0: error: pigs repository directory $default_repo not found"
     exit 1
 fi 
 
@@ -31,7 +31,7 @@ then
     exit 1
 fi 
 
-commit_msg="$3"
+commit_msg="$2"
 
 # =====================================
 # main
@@ -71,5 +71,8 @@ then
     commit_num=$((curr_num + 1))
 fi 
 
-echo "$commit_num $commit_msg-$staged_files_hash" >> "$log_file"
+history_file="$default_repo/commits/$curr_branch"
+
+echo "$commit_num $commit_msg" >> "$log_file"
+echo "$commit_num $staged_files_hash" >> "$history_file"
 echo "Committed as commit $commit_num"

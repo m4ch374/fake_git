@@ -28,5 +28,9 @@ echo "$default_branch_name" > "$pigs_dir/HEAD"
 mkdir "$pigs_dir/logs"
 touch "$pigs_dir/logs/$default_branch_name"
 
+# initialize commit history
+mkdir "$pigs_dir/commits"
+touch "$pigs_dir/commits/$default_branch_name"
+
 # not really empty lol
 echo "Initialized empty pigs repository in $pigs_dir"
