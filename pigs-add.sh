@@ -1,7 +1,7 @@
 #!/bin/dash
 
 # =====================================
-# Error checking
+# Syntax checking
 # =====================================
 default_repo=".pig"
 
@@ -17,24 +17,46 @@ then
     exit 1
 fi
 
-for file in "$@"
-do
-    if ! test -e "$file"
-    then
-        echo "$0: error: can not open '$file'" 
-        exit 1
-    fi 
-done 
-
 # ======================================
 # Main
 # ======================================
 index_file="./$default_repo/index"
 objects_file="./$default_repo/objects"
 
+# populate index file, treat it as temp tree
+branch_info="$default_repo/BRANCHES"
+curr_branch=$(cat $default_repo/HEAD)
+curr_tree=$(cat $branch_info | grep -E "^$curr_branch" | cut -d' ' -f2)
+
+if ! [ "$curr_tree" = "empty" ]
+then
+    cat "$objects_file/$curr_tree" >> "$index_file"
+fi 
+tmp=$(sort -u "$index_file")
+echo "$tmp" > "$index_file"
+
+# check if file exist in index
+for file in "$@"
+do
+    if ! (grep -E "^$file" "$index_file" > /dev/null || test -f "$file")
+    then
+        echo "$0: error: can not open '$file'" 
+        exit 1
+    fi 
+done 
+
+tmp_idx=$(mktemp)
 for file in "$@"
 do 
-    content_hash="$(sha1sum "$file" | sed -nE "s/^(.*) +.*$/\1/p")"
+    if ! test -f "$file"
+    then
+        continue
+    fi 
+
+    content_hash="$(sha1sum "$file" | cut -d' ' -f1)"
     cat "$file" > "$objects_file/$content_hash"
-    echo "$file $content_hash" >> "$index_file"
+    echo "$file $content_hash" >> "$tmp_idx"
 done 
+
+sort -u "$tmp_idx" > "$index_file"
+rm "$tmp_idx"

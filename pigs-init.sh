@@ -19,10 +19,14 @@ mkdir "$pigs_dir/objects"
 default_branch_name="master"
 
 # initialize branch infos
-echo "$default_branch_name" > "$pigs_dir/BRANCHES"
+echo "$default_branch_name empty" > "$pigs_dir/BRANCHES"
 
 # initialize curr head
 echo "$default_branch_name" > "$pigs_dir/HEAD"
+
+# initialize log file
+mkdir "$pigs_dir/logs"
+touch "$pigs_dir/logs/$default_branch_name"
 
 # not really empty lol
 echo "Initialized empty pigs repository in $pigs_dir"
