@@ -19,26 +19,45 @@ then
     exit 1
 fi
 
-if ! [ "$1" = "-m" ]
+if ! [ "$1" = "-m" ] && ! [ "$1" = "-a" ] && ! [ "$1" = "-am" ]
 then
+    echo "hi"
     echo "$error_msg" >&2
     exit 1
 fi
 
-if [ -z "$2" ]
+if { [ "$1" = "-m" ] || [ "$1" = "-am" ]; } && [ -z "$2" ]
 then
     echo "$error_msg" >&2
     exit 1
 fi 
 
-commit_msg="$2"
+if [ "$1" = "-a" ] && { ! [ "$2" = "-m" ] || [ -z "$3" ]; }
+then 
+    echo "$error_msg" >&2
+    exit 1
+fi 
 
 # =====================================
 # main
 # =====================================
+
+# setup
+commit_msg="$2"
+if [ "$1" = "-a" ]
+then
+    commit_msg="$3"
+fi 
+
+index_file="$default_repo/index"
+if [ "$1" = "-a" ] || [ "$1" = "-am" ]
+then
+    files_in_index=$(cut -d' ' -f1 "$index_file" | tr '\n' ' ') # very hacky
+    eval "pigs-add $files_in_index"
+fi 
+
 no_commits="nothing to commit"
 branch_info="$default_repo/BRANCHES"
-index_file="$default_repo/index"
 
 staged_files=$(cat $index_file)
 
