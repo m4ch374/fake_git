@@ -26,7 +26,7 @@ objects_file="./$default_repo/objects"
 # check if file exist in index, or current directory
 for file in "$@"
 do
-    if ! (grep -E "^$file" "$index_file" > /dev/null || test -f "$file")
+    if ! (grep -E "^$file .*$" "$index_file" > /dev/null || test -f "$file")
     then
         echo "$0: error: can not open '$file'" >&2
         exit 1
@@ -51,7 +51,7 @@ do
         cat "$file" > "$objects_file/$content_hash"
     fi 
 
-    if grep -E "^$file" "$index_file" > /dev/null
+    if grep -E "^$file .*$" "$index_file" > /dev/null
     then
         tmp=$(sed -E "s/^$file .*$/$file $content_hash/" "$index_file")
 

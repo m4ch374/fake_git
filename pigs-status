@@ -53,10 +53,110 @@ fi
 # file deleted, deleted from index ->
 #   not in cwd, not in index, in tree
 
-index_file="$default_repo/index"
+# helper function
+in_index() {
+    grep -E "^$1 .*$" "$default_repo/index" > /dev/null
+    return "$?"
+}
 
+in_tree() {
+    curr_tree=$(grep -E "^$(cat "$default_repo/HEAD") .*$" "$default_repo/BRANCHES" | cut -d' ' -f2)
+    grep -E "^$1 .*$" "$default_repo/objects/$curr_tree" > /dev/null
+    return "$?"
+}
+
+idx_eq_tree() {
+    file="$1"
+    idx_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$default_repo/index")
+    curr_tree=$(grep -E "^$(cat "$default_repo/HEAD") .*$" "$default_repo/BRANCHES" | cut -d' ' -f2)
+    tree_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$default_repo/objects/$curr_tree")
+
+    test "$idx_hash" = "$tree_hash"
+    return "$?"
+}
+
+idx_eq_curr() {
+    file="$1"
+    idx_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$default_repo/index")
+    curr_hash=$(sha1sum "$file" | cut -d' ' -f1)
+
+    test "$idx_hash" = "$curr_hash"
+    return "$?"
+}
+
+out_file=$(mktemp)
 files=$(ls .)
 for file in $files
 do 
-    echo "$file"
+    # here we go...
+    # disgusting asf.....
+    if in_tree "$file"
+    then
+        if ! in_index "$file"
+        then
+            echo "$file - deleted from index" >> "$out_file"
+            continue 
+        fi 
+
+        if idx_eq_curr "$file" && idx_eq_tree "$file"
+        then 
+            echo "$file - same as repo" >> "$out_file"
+        elif idx_eq_curr "$file"
+        then 
+            echo "$file - file changed, changes staged for commit" >> "$out_file"
+        elif idx_eq_tree "$file"
+        then 
+            echo "$file - file changed, changes not staged for commit" >> "$out_file"
+        else 
+            echo "$file - file changed, different changes staged for commit" >> "$out_file"
+        fi 
+    else 
+        if in_index "$file" && idx_eq_curr "$file"
+        then
+            echo "$file - added to index" >> "$out_file" 
+        elif in_index "$file"
+        then
+            echo "$file - added to index, file changed" >> "$out_file"
+        else 
+            echo "$file - untracked" >> "$out_file" 
+        fi 
+    fi 
+
 done 
+
+# tack files that have been deleted from cwd
+curr_tree=$(grep -E "^$(cat "$default_repo/HEAD") .*$" "$default_repo/BRANCHES" | cut -d' ' -f2)
+while IFS= read -r line
+do 
+    file=$(echo "$line" | cut -d' ' -f1)
+
+    if grep -E "^$file .*$" "$out_file" > /dev/null
+    then
+        continue  
+    fi 
+
+    if in_index "$file"
+    then 
+        echo "$file - file deleted" >> "$out_file"
+    else 
+        echo "$file - file deleted, deleted from index" >> "$out_file"
+    fi
+
+done < "$default_repo/objects/$curr_tree"
+
+while IFS= read -r line
+do 
+    file=$(echo "$line" | cut -d' ' -f1)
+
+    if grep -E "^$file .*$" "$out_file" > /dev/null
+    then
+        continue  
+    fi 
+
+    echo "$file - added to index, file deleted" >> "$out_file"
+
+done < "$default_repo/index"
+
+sort -k1,1 "$out_file"
+
+rm "$out_file"

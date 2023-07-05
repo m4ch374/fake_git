@@ -66,7 +66,7 @@ no_commits="nothing to commit"
 branch_info="$default_repo/BRANCHES"
 
 curr_branch=$(cat $default_repo/HEAD)
-curr_tree=$(cat $branch_info | grep -E "^$curr_branch" | cut -d' ' -f2)
+curr_tree=$(cat $branch_info | grep -E "^$curr_branch .*$" | cut -d' ' -f2)
 
 # create new tree
 tmp_tree=$(mktemp)
