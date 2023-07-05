@@ -1,0 +1,143 @@
+#!/bin/dash
+
+# =====================================
+# Syntax checking
+# =====================================
+default_repo=".pig"
+
+if ! test -d "$default_repo"
+then
+    echo "$0: error: pigs repository directory $default_repo not found" >&2
+    exit 1
+fi 
+
+usage="usage: $0 [--force] [--cached] <filenames>"
+if [ $# -eq 0 ]
+then 
+    echo "$usage" >&2
+    exit 1
+fi 
+
+i=0
+after_valid=0
+for arg in "$@"
+do 
+    if echo "$arg" | grep -E "^[a-zA-Z0-9]" > /dev/null
+    then
+        after_valid=1 
+    fi 
+
+    if [ "$after_valid" -eq 0 ] && [ "$i" -lt 2 ] && { ! [ "$arg" = "--force" ] && ! [ "$arg" = "--cached" ]; }
+    then
+        echo "$usage" >&2
+        exit 1 
+    fi 
+
+    if [ "$after_valid" -eq 1 ] && echo "$arg" | grep -E "^-" > /dev/null
+    then
+        echo "$usage" >&2
+        exit 1 
+    fi 
+
+    i=$((i+1))
+done 
+# =====================================
+# Main
+# =====================================
+
+force=0
+cached=0
+
+index_file="$default_repo/index"
+curr_branch=$(cat "$default_repo/HEAD")
+curr_tree=$(sed -nE "s/^$curr_branch (.*)/\1/p" "$default_repo/BRANCHES")
+for file in "$@"
+do 
+    if [ "$file" = "--force" ]
+    then
+        force=1
+        continue 
+    fi 
+
+    if [ "$file" = "--cached" ]
+    then
+        cached=1
+        continue  
+    fi 
+
+    # check if file exist
+    if ! grep -E "^$file" "$index_file" > /dev/null
+    then
+        echo "$0: error: '$file' is not in the pigs repository" >&2
+        exit 1 
+    fi 
+
+    if [ "$force" -eq 0 ]
+    then
+        if ! test -f "$file"
+        then
+            continue 
+        fi 
+
+        # errors: 
+        # index == curr && index != tree => stage error
+        # index != curr && index != tree => index_error
+        # index == tree && index != curr => repo_error
+        stage_error="$0: error: '$file' has staged changes in the index"
+        index_error="$0: error: '$file' in index is different to both the working file and the repository"
+        repo_error="$0: error: '$file' in the repository is different to the working file"
+
+        index_file_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$index_file")
+        curr_file_hash=$(sha1sum "$file" | cut -d' ' -f1)
+
+        if [ "$curr_tree" = "empty" ] && [ "$cached" -eq 0 ]
+        then
+            if [ "$index_file_hash" = "$curr_file_hash" ]
+            then 
+                echo "$stage_error" >&2
+                exit 1
+            else 
+                echo "$index_error" >&2
+                exit 1
+            fi
+        fi 
+
+        tree_file_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$default_repo/objects/$curr_tree")
+        if [ "$index_file_hash" = "$curr_file_hash" ] && ! [ "$index_file_hash" = "$tree_file_hash" ] && [ "$cached" -eq 0 ]
+        then
+            echo "$stage_error" >&2
+            exit 1
+        elif ! [ "$index_file_hash" = "$curr_file_hash" ] && ! [ "$index_file_hash" = "$tree_file_hash" ]
+        then 
+            echo "$index_error" >&2
+            exit 1
+        elif [ "$index_file_hash" = "$tree_file_hash" ] && ! [ "$index_file_hash" = "$curr_file_hash" ] && [ "$cached" -eq 0 ]
+        then 
+            echo "$repo_error" >&2
+            exit 1 
+        fi 
+    fi 
+done  
+
+for file in "$@"
+do 
+    if [ "$file" = "--force" ] || [ "$file" = "--cached" ]
+    then
+        continue 
+    fi 
+
+    # add to removes file and remove from index
+    echo "$file" >> "$default_repo/removes"
+    tmp=$(sed -E "/^$file .*$/d" "$index_file")
+    if [ -z "$tmp" ]
+    then 
+        : > "$index_file"
+    else 
+        echo "$tmp" > "$index_file"
+    fi 
+
+    if [ "$cached" -eq 0 ] && test -f "$file"
+    then
+        rm "$file" 
+    fi 
+done 

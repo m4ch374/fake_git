@@ -32,5 +32,8 @@ touch "$pigs_dir/logs/$default_branch_name"
 mkdir "$pigs_dir/commits"
 touch "$pigs_dir/commits/$default_branch_name"
 
+# to store files to ignore when constructing new tree (git rm)
+touch "$pigs_dir/removes"
+
 # not really empty lol
 echo "Initialized empty pigs repository in $pigs_dir"

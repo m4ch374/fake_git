@@ -42,11 +42,17 @@ fi
 # main
 # =====================================
 
-# setup
+# setup, might check if it accepts new line
 commit_msg="$2"
 if [ "$1" = "-a" ]
 then
     commit_msg="$3"
+fi 
+
+if [ -z "$commit_msg" ]
+then 
+    echo "$error_msg" >&2
+    exit 1
 fi 
 
 index_file="$default_repo/index"
@@ -84,19 +90,6 @@ while IFS= read -r line
 do 
     curr_file=$(echo "$line" | cut -d' ' -f1)
 
-    # deletion
-    if ! test -f "$curr_file"
-    then
-        tmp=$(sed -E "s/^$curr_file .*$//" "$tmp_tree")
-        if [ -z "$tmp" ]
-        then
-            : > "$tmp_tree"
-        else 
-            echo "$tmp" > "$tmp_tree" 
-        fi 
-        continue
-    fi 
-
     if grep -E "^$curr_file" "$tmp_tree" > /dev/null
     then
         tmp=$(sed -E "s/^$curr_file .*$/$line/" "$tmp_tree") 
@@ -106,6 +99,21 @@ do
     fi 
     
 done < "$index_file"
+
+# remove files staged by git rm or git add
+while IFS= read -r line 
+do 
+    if grep -E "^$line .*$" "$tmp_tree" > /dev/null
+    then
+        tmp=$(sed -E "/^$line .*$/d" "$tmp_tree")
+        if [ -z "$tmp" ]
+        then
+            : > "$tmp_tree"
+        else 
+            echo "$tmp" > "$tmp_tree" 
+        fi 
+    fi 
+done < "$default_repo/removes"
 
 tmp_tree_hash=$(sha1sum "$tmp_tree" | cut -d' ' -f1)
 
@@ -125,6 +133,7 @@ fi
 
 new_info=$(sed -E "s/^$curr_branch .*$/$curr_branch $tmp_tree_hash/" "$branch_info")
 echo "$new_info" > "$branch_info"
+: > "$default_repo/removes"
 
 # logging
 commit_num=0
