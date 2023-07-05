@@ -38,7 +38,7 @@ do
     # might introduce lost pointers, might fix if i have time
     if ! test -f "$file"
     then
-        echo "$file" >> "$default_repo/removes"
+        eval pigs-rm --force "$file"
         continue
     fi 
 

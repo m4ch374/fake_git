@@ -74,6 +74,7 @@ log_file="$default_repo/logs/$curr_branch"
 if [ -z "$(cat "$log_file")" ] && [ -z "$staged_files" ]
 then
     echo "$no_commits"
+    : > "$default_repo/removes"
     exit 0
 fi 
 
@@ -114,6 +115,7 @@ do
         fi 
     fi 
 done < "$default_repo/removes"
+: > "$default_repo/removes"
 
 tmp_tree_hash=$(sha1sum "$tmp_tree" | cut -d' ' -f1)
 
@@ -133,7 +135,6 @@ fi
 
 new_info=$(sed -E "s/^$curr_branch .*$/$curr_branch $tmp_tree_hash/" "$branch_info")
 echo "$new_info" > "$branch_info"
-: > "$default_repo/removes"
 
 # logging
 commit_num=0
