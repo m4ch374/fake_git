@@ -7,7 +7,7 @@ default_repo=".pig"
 
 if ! test -d "$default_repo"
 then
-    echo "$0: error: pigs repository directory $default_repo not found"
+    echo "$0: error: pigs repository directory $default_repo not found" >&2
     exit 1
 fi 
 

@@ -19,7 +19,12 @@ mkdir "$pigs_dir/objects"
 default_branch_name="master"
 
 # initialize branch infos
-echo "$default_branch_name empty" > "$pigs_dir/BRANCHES"
+empty_file=$(mktemp)
+empty_hash=$(sha1sum "$empty_file" | cut -d' ' -f1)
+rm "$empty_file"
+
+echo "$default_branch_name $empty_hash" > "$pigs_dir/BRANCHES"
+touch "$pigs_dir/objects/$empty_hash"
 
 # initialize curr head
 echo "$default_branch_name" > "$pigs_dir/HEAD"

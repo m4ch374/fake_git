@@ -65,27 +65,13 @@ fi
 no_commits="nothing to commit"
 branch_info="$default_repo/BRANCHES"
 
-staged_files=$(cat $index_file)
-
 curr_branch=$(cat $default_repo/HEAD)
 curr_tree=$(cat $branch_info | grep -E "^$curr_branch" | cut -d' ' -f2)
-
-log_file="$default_repo/logs/$curr_branch"
-if [ -z "$(cat "$log_file")" ] && [ -z "$staged_files" ]
-then
-    echo "$no_commits"
-    : > "$default_repo/removes"
-    exit 0
-fi 
 
 # create new tree
 tmp_tree=$(mktemp)
 curr_tree_file="$default_repo/objects/$curr_tree"
-
-if ! { [ "$curr_tree" = "empty" ] || [ -z "$(cat "$curr_tree_file")" ]; }
-then
-    cat "$curr_tree_file" > "$tmp_tree"
-fi 
+cat "$curr_tree_file" > "$tmp_tree"
 
 while IFS= read -r line
 do 
@@ -138,6 +124,7 @@ echo "$new_info" > "$branch_info"
 
 # logging
 commit_num=0
+log_file="$default_repo/logs/$curr_branch"
 if [ -n "$(cat "$log_file")" ]
 then
     curr_num=$(tail -n1 "$log_file" | cut -d' ' -f1)

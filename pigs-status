@@ -1,0 +1,62 @@
+#!/bin/dash
+
+# =====================================
+# Syntax checking
+# =====================================
+default_repo=".pig"
+
+if ! test -d "$default_repo"
+then
+    echo "$0: error: pigs repository directory $default_repo not found" >&2
+    exit 1
+fi 
+
+if [ "$#" -ne 0 ]
+then
+    echo "usage: pigs-status"
+    exit 1
+fi 
+
+# =====================================
+# Main
+# =====================================
+
+# All statuses
+# =====================================
+# untracked -> 
+#   in cwd, not in index file, not in tree
+#
+# added to index -> 
+#   in cwd, in index file, not in tree | cwd == index
+#
+# added to index, file changed -> 
+#   in cwd, in index file, not in tree | cwd != index
+#
+# same as repo -> 
+#   in cwd, in index file, in tree | cwd == index == tree
+# 
+# file changed, changes not staged for commit ->
+#   in cwd, in index file, in tree | cwd != index && index == tree
+#
+# file changed, changes staged for commit ->
+#   in cwd, in index file, in tree | cwd == index && index != tree
+#
+# file changed, different changes staged for commit ->
+#   in cwd, in index file, in tree | cwd != index && index != tree
+# 
+# deleted from index ->
+#   in cwd, not in index file, in tree
+#
+# file deleted ->
+#   not in cwd, in index, in tree 
+# 
+# file deleted, deleted from index ->
+#   not in cwd, not in index, in tree
+
+index_file="$default_repo/index"
+
+files=$(ls .)
+for file in $files
+do 
+    echo "$file"
+done 

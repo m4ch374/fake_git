@@ -90,18 +90,6 @@ do
         index_file_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$index_file")
         curr_file_hash=$(sha1sum "$file" | cut -d' ' -f1)
 
-        if [ "$curr_tree" = "empty" ] && [ "$cached" -eq 0 ]
-        then
-            if [ "$index_file_hash" = "$curr_file_hash" ]
-            then 
-                echo "$stage_error" >&2
-                exit 1
-            else 
-                echo "$index_error" >&2
-                exit 1
-            fi
-        fi 
-
         tree_file_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$default_repo/objects/$curr_tree")
         if [ "$index_file_hash" = "$curr_file_hash" ] && ! [ "$index_file_hash" = "$tree_file_hash" ] && [ "$cached" -eq 0 ]
         then
