@@ -41,6 +41,9 @@ target_tree_file="$default_repo/objects/$target_tree"
 curr_branch=$(cat "$default_repo/HEAD")
 curr_tree=$(grep -E "^$curr_branch .*$" "$default_repo/BRANCHES" | cut -d' ' -f2)
 
+will_overwrite=$(mktemp)
+overwrite_error="$0: error: Your changes to the following files would be overwritten by checkout:"
+
 file_whitelist=$(mktemp -d)
 files=$(ls .)
 for file in $files 
@@ -54,7 +57,23 @@ do
     fi 
 
     cat "$file" > "$file_whitelist/$file"
+
+    # check if file will be overwritten
+    if grep -E "^$file .*$" "$target_tree_file" > /dev/null && ! grep -E "^$file .*$" "$default_repo/objects/$curr_tree" > /dev/null
+    then
+        echo "$file" >> "$will_overwrite" 
+    fi 
 done 
+
+if [ -n "$(cat "$will_overwrite")" ]
+then
+    echo "$overwrite_error" >&2
+    cat "$will_overwrite" >&2
+    rm "$will_overwrite"
+    rm -r "$file_whitelist"
+    exit 1
+fi 
+rm "$will_overwrite"
 
 rm ./*
 while IFS= read -r line
@@ -70,6 +89,21 @@ for file in $whitelisted_files
 do 
     cat "$file_whitelist/$file" > "$file"
 done 
+
+# edit index
+while IFS= read -r line 
+do 
+    curr_file=$(echo "$line" | cut -d' ' -f1)
+    file_hash=$(echo "$line" | cut -d' ' -f2)
+
+    if test -f "$file_whitelist/$curr_file"
+    then 
+        continue
+    fi 
+
+    modded_index=$(sed -E "s/^$curr_file .*$/$curr_file $file_hash/" "$default_repo/index")
+    echo "$modded_index" > "$default_repo/index"
+done < "$target_tree_file"
 
 rm -r "$file_whitelist"
 
