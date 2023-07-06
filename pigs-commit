@@ -124,13 +124,16 @@ echo "$new_info" > "$branch_info"
 
 # logging
 commit_num=0
-log_file="$default_repo/logs/$curr_branch"
-if [ -n "$(cat "$log_file")" ]
+most_recent_num_file="$default_repo/logs/COMMIT_NUM"
+
+curr_num="$(cat "$most_recent_num_file")"
+if [ -n "$curr_num" ]
 then
-    curr_num=$(tail -n1 "$log_file" | cut -d' ' -f1)
     commit_num=$((curr_num + 1))
 fi 
+echo "$commit_num" > "$most_recent_num_file"
 
+log_file="$default_repo/logs/$curr_branch"
 history_file="$default_repo/commits/$curr_branch"
 
 echo "$commit_num $commit_msg" >> "$log_file"

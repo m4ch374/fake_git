@@ -32,6 +32,7 @@ echo "$default_branch_name" > "$pigs_dir/HEAD"
 # initialize log file
 mkdir "$pigs_dir/logs"
 touch "$pigs_dir/logs/$default_branch_name"
+touch "$pigs_dir/logs/COMMIT_NUM"
 
 # initialize commit history
 mkdir "$pigs_dir/commits"

@@ -34,20 +34,44 @@ then
 fi 
 
 # populate file
+# uncommited files preserves
 target_tree=$(grep -E "^$1 .*$" "$default_repo/BRANCHES" | cut -d' ' -f2)
 target_tree_file="$default_repo/objects/$target_tree"
 
-# dangerous
-rm ./*
+curr_branch=$(cat "$default_repo/HEAD")
+curr_tree=$(grep -E "^$curr_branch .*$" "$default_repo/BRANCHES" | cut -d' ' -f2)
 
+file_whitelist=$(mktemp -d)
+files=$(ls .)
+for file in $files 
+do 
+    curr_file_hash=$(sha1sum "$file" | cut -d' ' -f1)
+    committed_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$default_repo/objects/$curr_tree")
+
+    if [ "$curr_file_hash" = "$committed_hash" ]
+    then
+        continue  
+    fi 
+
+    cat "$file" > "$file_whitelist/$file"
+done 
+
+rm ./*
 while IFS= read -r line
 do 
-    file_content=$(echo "$line" | cut -d' ' -f2)
-    cat "$default_repo/objects/$file_content" > "$(echo "$line" | cut -d' ' -f1)"
+    curr_file=$(echo "$line" | cut -d' ' -f1)
+    file_hash=$(echo "$line" | cut -d' ' -f2)
+
+    cat "$default_repo/objects/$file_hash" > "$curr_file"
 done < "$target_tree_file"
 
-curr_branch=$(cat "$default_repo"/HEAD)
-cat "$default_repo/logs/$curr_branch" > "$default_repo/logs/$1"
+whitelisted_files=$(ls "$file_whitelist")
+for file in $whitelisted_files
+do 
+    cat "$file_whitelist/$file" > "$file"
+done 
+
+rm -r "$file_whitelist"
 
 # switch branch
 echo "$1" > "$default_repo/HEAD"
