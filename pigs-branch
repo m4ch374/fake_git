@@ -1,0 +1,102 @@
+#!/bin/dash
+
+# =====================================
+# Syntax checking
+# =====================================
+default_repo=".pig"
+
+if ! test -d "$default_repo"
+then
+    echo "$0: error: pigs repository directory $default_repo not found" >&2
+    exit 1
+fi 
+
+usage="usage: pigs-branch [-d] <branch>"
+if [ "$#" -gt 2 ]
+then
+    echo "$usage" >&2
+    exit 1
+elif [ "$#" -eq 2 ] && ! [ "$1" = "-d" ]
+then 
+    echo "$usage" >&2
+    exit 1
+fi 
+
+# =====================================
+# Main
+# =====================================
+
+# cannot run before commit
+curr_branch=$(cat "$default_repo/HEAD")
+if [ -z "$(cat "$default_repo/logs/$curr_branch")" ]
+then
+    echo "$0: error: this command can not be run until after the first commit" >&2
+    exit 1
+fi 
+
+# display all branches
+branch_info="$default_repo/BRANCHES"
+if [ "$#" -eq 0 ]
+then
+    cut -d' ' -f1 "$branch_info" | sort
+    exit 0
+fi 
+
+# setup
+delete=0
+branch_input="$1"
+
+if [ "$1" = "-d" ]
+then
+    delete=1
+    branch_input="$2"
+fi 
+
+if [ -z "$branch_input" ] || echo "$branch_input" | grep -E "^-" > /dev/null
+then
+    echo "$0: error: branch name required"
+    exit 1
+fi  
+
+branch_exist() {
+    grep -E "^$1 .*$" "$branch_info" > /dev/null
+    return "$?"
+}
+
+# ugly, introduces hanging pointers but no one cares i think
+if [ "$delete" -eq 1 ]
+then 
+    if ! branch_exist "$branch_input"
+    then
+        echo "$0: error: branch '$branch_input' doesn't exist" >&2
+        exit 1
+    fi 
+
+    if [ "$branch_input" = "master" ]
+    then
+        echo "$0: error: can not delete branch 'master': default branch" >&2
+        exit 1 
+    fi 
+
+    new_info=$(sed -E "/^$branch_input .*$/d" "$branch_info" )
+    if [ -z "$new_info" ]
+    then
+        : > "$branch_info"
+    else 
+        echo "$new_info" > "$branch_info"
+    fi 
+    echo "Deleted branch '$branch_input'"
+    exit 0
+fi 
+
+if branch_exist "$branch_input"
+then
+    echo "$0: error: branch '$branch_input' already exists" >&2
+    exit 1    
+fi 
+
+curr_tree=$(grep -E "^$curr_branch .*$" "$branch_info" | cut -d' ' -f2)
+echo "$branch_input $curr_tree" >> "$branch_info"
+
+# cat logs
+cat "$default_repo/logs/$curr_branch" > "$default_repo/logs/$branch_input"

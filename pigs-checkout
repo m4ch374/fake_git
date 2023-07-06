@@ -1,0 +1,56 @@
+#!/bin/dash
+
+# =====================================
+# Syntax checking
+# =====================================
+default_repo=".pig"
+
+if ! test -d "$default_repo"
+then
+    echo "$0: error: pigs repository directory $default_repo not found" >&2
+    exit 1
+fi 
+
+if [ "$#" -eq 0 ] || [ "$#" -gt 1 ]
+then
+    echo "usage: pigs-checkout <branch>" >&2
+    exit 1
+fi 
+
+# =====================================
+# Main
+# =====================================
+
+if ! grep -E "^$1 .*$" "$default_repo/BRANCHES" > /dev/null
+then
+    echo "$0: error: unknown branch '$1'" >&2
+    exit 1
+fi 
+
+if [ "$(cat "$default_repo/HEAD")" = "$1" ]
+then
+    echo "Already on '$1'"
+    exit 0
+fi 
+
+# switch branch
+echo "$1" > "$default_repo/HEAD"
+
+# populate file
+target_tree=$(grep -E "^$1 .*$" "$default_repo/BRANCHES" | cut -d' ' -f2)
+target_tree_file="$default_repo/objects/$target_tree"
+
+files=$(ls .)
+for file in $files
+do 
+    if ! grep -E "^$file .*$" "$target_tree_file" > /dev/null
+    then
+        rm "$file"
+        continue  
+    fi 
+
+    file_content=$(grep -E "^$file .*$" "$target_tree_file" | cut -d' ' -f2)
+    cat "$file_content" > "$file"
+done 
+
+echo "Switched to branch '$1'"
