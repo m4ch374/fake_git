@@ -33,24 +33,22 @@ then
     exit 0
 fi 
 
-# switch branch
-echo "$1" > "$default_repo/HEAD"
-
 # populate file
 target_tree=$(grep -E "^$1 .*$" "$default_repo/BRANCHES" | cut -d' ' -f2)
 target_tree_file="$default_repo/objects/$target_tree"
 
-files=$(ls .)
-for file in $files
+# dangerous
+rm ./*
+
+while IFS= read -r line
 do 
-    if ! grep -E "^$file .*$" "$target_tree_file" > /dev/null
-    then
-        rm "$file"
-        continue  
-    fi 
+    file_content=$(echo "$line" | cut -d' ' -f2)
+    cat "$default_repo/objects/$file_content" > "$(echo "$line" | cut -d' ' -f1)"
+done < "$target_tree_file"
 
-    file_content=$(grep -E "^$file .*$" "$target_tree_file" | cut -d' ' -f2)
-    cat "$file_content" > "$file"
-done 
+curr_branch=$(cat "$default_repo"/HEAD)
+cat "$default_repo/logs/$curr_branch" > "$default_repo/logs/$1"
 
+# switch branch
+echo "$1" > "$default_repo/HEAD"
 echo "Switched to branch '$1'"
