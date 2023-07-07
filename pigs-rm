@@ -7,11 +7,11 @@ default_repo=".pig"
 
 if ! test -d "$default_repo"
 then
-    echo "$0: error: pigs repository directory $default_repo not found" >&2
+    echo "pigs-rm: error: pigs repository directory $default_repo not found" >&2
     exit 1
 fi 
 
-usage="usage: $0 [--force] [--cached] <filenames>"
+usage="usage: pigs-rm [--force] [--cached] <filenames>"
 if [ $# -eq 0 ]
 then 
     echo "$usage" >&2
@@ -68,7 +68,7 @@ do
     # check if file exist
     if ! grep -E "^$file .*$" "$index_file" > /dev/null
     then
-        echo "$0: error: '$file' is not in the pigs repository" >&2
+        echo "pigs-rm: error: '$file' is not in the pigs repository" >&2
         exit 1 
     fi 
 
@@ -83,9 +83,9 @@ do
         # index == curr && index != tree => stage error
         # index != curr && index != tree => index_error
         # index == tree && index != curr => repo_error
-        stage_error="$0: error: '$file' has staged changes in the index"
-        index_error="$0: error: '$file' in index is different to both the working file and the repository"
-        repo_error="$0: error: '$file' in the repository is different to the working file"
+        stage_error="pigs-rm: error: '$file' has staged changes in the index"
+        index_error="pigs-rm: error: '$file' in index is different to both the working file and the repository"
+        repo_error="pigs-rm: error: '$file' in the repository is different to the working file"
 
         index_file_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$index_file")
         curr_file_hash=$(sha1sum "$file" | cut -d' ' -f1)

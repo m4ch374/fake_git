@@ -7,13 +7,13 @@ default_repo=".pig"
 
 if ! test -d "$default_repo"
 then
-    echo "$0: error: pigs repository directory $default_repo not found" >&2
+    echo "pigs-log: error: pigs repository directory $default_repo not found" >&2
     exit 1
 fi 
 
 if ! [ $# -eq 0 ]
 then
-    echo "usage: $0" >&2
+    echo "usage: pigs-log" >&2
     exit 1
 fi
 

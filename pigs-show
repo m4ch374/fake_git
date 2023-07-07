@@ -7,13 +7,13 @@ default_repo=".pig"
 
 if ! test -d "$default_repo"
 then
-    echo "$0: error: pigs repository directory $default_repo not found" >&2
+    echo "pigs-show: error: pigs repository directory $default_repo not found" >&2
     exit 1
 fi 
 
 if [ $# -ne 1 ] || ! echo "$@" | grep ':' > /dev/null
 then
-    echo "usage: $0 <commit>:<filename>">&2
+    echo "usage: pigs-show <commit>:<filename>">&2
     exit 1
 fi 
 
@@ -29,7 +29,7 @@ then
     index_file="$default_repo/index"
     if ! grep -E "^$file_name" "$index_file" > /dev/null
     then
-        echo "$0: error: '$file_name' not found in index" >&2
+        echo "pigs-show: error: '$file_name' not found in index" >&2
         exit 1 
     fi 
 
@@ -44,7 +44,7 @@ all_commits=$(cut -f1 -d' ' "$history_file")
 
 if ! echo "$all_commits" | grep -E "^$commit_num$" > /dev/null
 then
-    echo "$0: error: unknown commit '$commit_num'" >&2
+    echo "pigs-show: error: unknown commit '$commit_num'" >&2
     exit 1
 fi 
 
@@ -53,7 +53,7 @@ tree_referred="$default_repo/objects/$(sed -nE "s/^$commit_num (.*)$/\1/p" "$his
 all_files=$(cut -f1 -d' ' "$tree_referred")
 if ! echo "$all_files" | grep -E "^$file_name$" > /dev/null
 then
-    echo "$0: error: '$file_name' not found in commit $commit_num" >&2
+    echo "pigs-show: error: '$file_name' not found in commit $commit_num" >&2
     exit 1
 fi 
 

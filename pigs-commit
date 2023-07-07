@@ -7,13 +7,13 @@ default_repo=".pig"
 
 if ! test -d "$default_repo"
 then
-    echo "$0: error: pigs repository directory $default_repo not found" >&2
+    echo "pigs-commit: error: pigs repository directory $default_repo not found" >&2
     exit 1
 fi 
 
-error_msg="usage: $0 [-a] -m commit-message"
+error_msg="usage: pigs-commit [-a] -m commit-message"
 
-if [ $# -eq 0 ]
+if [ $# -eq 0 ] || [ $# -gt 3 ]
 then
     echo "$error_msg" >&2
     exit 1
@@ -21,12 +21,11 @@ fi
 
 if ! [ "$1" = "-m" ] && ! [ "$1" = "-a" ] && ! [ "$1" = "-am" ]
 then
-    echo "hi"
     echo "$error_msg" >&2
     exit 1
 fi
 
-if { [ "$1" = "-m" ] || [ "$1" = "-am" ]; } && [ -z "$2" ]
+if { [ "$1" = "-m" ] || [ "$1" = "-am" ]; } && { [ -z "$2" ] || [ "$2" = "-a" ]; }
 then
     echo "$error_msg" >&2
     exit 1
@@ -59,7 +58,7 @@ index_file="$default_repo/index"
 if [ "$1" = "-a" ] || [ "$1" = "-am" ]
 then
     files_in_index=$(cut -d' ' -f1 "$index_file" | tr '\n' ' ') # very hacky
-    eval "pigs-add $files_in_index"
+    eval "pigs-add $files_in_index" > /dev/null
 fi 
 
 no_commits="nothing to commit"

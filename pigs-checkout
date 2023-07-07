@@ -7,7 +7,7 @@ default_repo=".pig"
 
 if ! test -d "$default_repo"
 then
-    echo "$0: error: pigs repository directory $default_repo not found" >&2
+    echo "pigs-checkout: error: pigs repository directory $default_repo not found" >&2
     exit 1
 fi 
 
@@ -23,7 +23,7 @@ fi
 
 if ! grep -E "^$1 .*$" "$default_repo/BRANCHES" > /dev/null
 then
-    echo "$0: error: unknown branch '$1'" >&2
+    echo "pigs-checkout: error: unknown branch '$1'" >&2
     exit 1
 fi 
 
@@ -42,7 +42,7 @@ curr_branch=$(cat "$default_repo/HEAD")
 curr_tree=$(grep -E "^$curr_branch .*$" "$default_repo/BRANCHES" | cut -d' ' -f2)
 
 will_overwrite=$(mktemp)
-overwrite_error="$0: error: Your changes to the following files would be overwritten by checkout:"
+overwrite_error="pigs-checkout: error: Your changes to the following files would be overwritten by checkout:"
 
 file_whitelist=$(mktemp -d)
 files=$(ls .)
