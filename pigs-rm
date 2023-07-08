@@ -17,30 +17,6 @@ then
     echo "$usage" >&2
     exit 1
 fi 
-
-i=0
-after_valid=0
-for arg in "$@"
-do 
-    if echo "$arg" | grep -E "^[a-zA-Z0-9]" > /dev/null
-    then
-        after_valid=1 
-    fi 
-
-    if [ "$after_valid" -eq 0 ] && [ "$i" -lt 2 ] && { ! [ "$arg" = "--force" ] && ! [ "$arg" = "--cached" ]; }
-    then
-        echo "$usage" >&2
-        exit 1 
-    fi 
-
-    if [ "$after_valid" -eq 1 ] && echo "$arg" | grep -E "^-" > /dev/null
-    then
-        echo "$usage" >&2
-        exit 1 
-    fi 
-
-    i=$((i+1))
-done 
 # =====================================
 # Main
 # =====================================
@@ -48,9 +24,6 @@ done
 force=0
 cached=0
 
-index_file="$default_repo/index"
-curr_branch=$(cat "$default_repo/HEAD")
-curr_tree=$(sed -nE "s/^$curr_branch (.*)/\1/p" "$default_repo/BRANCHES")
 for file in "$@"
 do 
     if [ "$file" = "--force" ]
@@ -62,6 +35,28 @@ do
     if [ "$file" = "--cached" ]
     then
         cached=1
+        continue  
+    fi 
+
+    if echo "$file" | grep -E "^-" > /dev/null
+    then
+        echo "$usage" >&2
+        exit 1 
+    fi 
+done 
+
+index_file="$default_repo/index"
+curr_branch=$(cat "$default_repo/HEAD")
+curr_tree=$(sed -nE "s/^$curr_branch (.*)/\1/p" "$default_repo/BRANCHES")
+for file in "$@"
+do 
+    if [ "$file" = "--force" ]
+    then
+        continue 
+    fi 
+
+    if [ "$file" = "--cached" ]
+    then
         continue  
     fi 
 
