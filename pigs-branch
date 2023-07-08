@@ -20,6 +20,16 @@ elif [ "$#" -eq 2 ] && ! [ "$1" = "-d" ]
 then 
     echo "$usage" >&2
     exit 1
+elif echo "$1" | grep -E "^-[^d]" > /dev/null
+then 
+    echo "$usage" >&2
+    exit 1
+fi 
+
+if echo "$1" | grep -E "^[0-9]+$" > /dev/null
+then
+    echo "pigs-branch: error: invalid branch name '$1'" >&2
+    exit 1
 fi 
 
 # =====================================
@@ -86,10 +96,9 @@ then
         exit 1 
     fi 
 
-    curr_branch_hash=$(sed -nE "s/^$curr_branch (.*)$/\1/p" "$default_repo/BRANCHES")
     branch_input_hash=$(sed -nE "s/^$branch_input (.*)$/\1/p" "$default_repo/BRANCHES")
 
-    if ! [ "$curr_branch_hash" = "$branch_input_hash" ]
+    if ! grep -E "^[0-9]+ $branch_input_hash$" "$default_repo/commits/$curr_branch" > /dev/null
     then
         echo "pigs-branch: error: branch '$branch_input' has unmerged changes" >&2
         exit 1 

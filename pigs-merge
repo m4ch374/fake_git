@@ -1,0 +1,194 @@
+#!/bin/dash 
+
+# =====================================
+# Syntax checking
+# =====================================
+default_repo=".pig"
+
+if ! test -d "$default_repo"
+then
+    echo "pigs-merge: error: pigs repository directory $default_repo not found" >&2
+    exit 1
+fi 
+
+usage="usage: pigs-merge <branch|commit> -m message"
+empty_msg="pigs-merge: error: empty commit message"
+
+# a somehow super edge edge case
+if [ "$#" -eq 1 ] && ! echo "$1" | grep -E "^-" > /dev/null
+then
+    echo "$empty_msg" >&2
+    exit 1
+fi 
+
+if [ "$#" -ne 3 ] || echo "$1" | grep -E "^-" > /dev/null || echo "$3" | grep -E "^-" > /dev/null
+then
+    echo "$usage" >&2
+    exit 1
+fi 
+
+if [ -z "$3" ]
+then
+    echo "$empty_msg" >&2
+    exit 1
+fi 
+
+# =====================================
+# Main
+# =====================================
+
+get_tree_from_commit() {
+    commit_num="$1"
+    commit_dir="$default_repo/commits"
+
+    for file in "$commit_dir"/*
+    do 
+        if grep -E "^$commit_num .*$" "$file" > /dev/null
+        then
+            sed -nE "s/^$commit_num (.*)$/\1/p" "$file"
+            break 
+        fi 
+    done 
+}
+
+get_commit_num() {
+    incoming_commit="$1"
+    if echo "$incoming_commit" | grep -E "^[0-9]+$" > /dev/null
+    then
+        echo "$incoming_commit"
+    else 
+        tail -n1 "$default_repo/commits/$incoming_commit" | cut -d' ' -f1
+    fi 
+}
+
+get_branch() {
+    incoming_commit="$1"
+    if echo "$incoming_commit" | grep -E "^[0-9]+$" > /dev/null
+    then
+        for file in "$default_repo/logs"/*
+        do 
+            if grep -E "^$file .*$" "$default_repo/logs/$file"
+            then
+                echo "$file"
+                break 
+            fi 
+        done 
+    else 
+        echo "$incoming_commit"
+    fi 
+}
+
+get_common_tree() {
+    incoming_commit=$(get_commit_num "$1")
+
+    curr_branch=$(cat "$default_repo/HEAD")
+
+    tmp_rec=$(mktemp)
+    while IFS= read -r line
+    do 
+        commit=$(echo "$line" | cut -d' ' -f1)
+        if [ "$commit" -lt "$incoming_commit" ]
+        then
+            echo "$line" >> "$tmp_rec"
+        fi 
+    done < "$default_repo/commits/$curr_branch"
+
+    sort -k1,1 "$tmp_rec" | tail -n1 | cut -d' ' -f2
+    rm "$tmp_rec"
+}
+
+filter_history() {
+    branch=$(get_branch "$1")
+    commit_num=$(get_commit_num "$1")
+    filter_dir="$2"
+
+    filtered=$(mktemp)
+    while IFS= read -r line 
+    do 
+        num=$(echo "$line" | cut -d' ' -f1)
+        if [ "$num" -le "$commit_num" ]
+        then
+            echo "$line" >> "$filtered" 
+        fi 
+    done < "$filter_dir/$branch"
+
+    cat "$filtered"
+    rm "$filtered"
+}
+
+merge_history() {
+    merge_dir="$2"
+
+    curr_branch=$(cat "$default_repo/HEAD")
+
+    merged=$(mktemp)
+    filter_history "$1" "$merge_dir" >> "$merged"
+    cat "$merge_dir/$curr_branch" >> "$merged"
+
+    sort -u "$merged"
+    rm "$merged"
+}
+
+input="$1"
+
+latest_commit="$(cat "$default_repo/logs/COMMIT_NUM")"
+branch_file="$default_repo/BRANCHES"
+if echo "$input" | grep -E "^[0-9]+$" > /dev/null && [ "$input" -gt "$latest_commit" ]
+then
+    echo "pigs-merge: error: unknown commit '$input'" >&2
+    exit 1
+elif ! grep -E "^$input .*$" "$branch_file" > /dev/null
+then 
+    echo "pigs-merge: error: unknown branch '$input'" >&2
+    exit 1
+fi 
+
+up_to_date="Already up to date"
+fast_forward="Fast-forward: no commit created"
+
+merge_tree=$(get_tree_from_commit "$(get_commit_num "$input")")
+
+curr_branch="$(cat "$default_repo/HEAD")"
+
+if grep -E "^[0-9]+ $merge_tree$" "$default_repo/commits/$curr_branch" > /dev/null
+then
+    echo "$up_to_date"
+    exit 0
+fi 
+
+common_tree=$(get_common_tree "$input")
+
+# fast forward
+curr_tree=$(sed -nE "s/^$curr_branch (.*)$/\1/p" "$default_repo/BRANCHES")
+if [ "$common_tree" = "$curr_tree" ]
+then
+    # merge log files and commit files
+    new_log=$(merge_history "$input" "$default_repo/logs")
+    echo "$new_log" > "$default_repo/logs/$curr_branch"
+
+    new_commit=$(merge_history "$input" "$default_repo/commits")
+    echo "$new_commit" > "$default_repo/commits/$curr_branch"
+
+    # populate files & edit index
+    rm ./*
+    while IFS= read -r line
+    do 
+        curr_file=$(echo "$line" | cut -d' ' -f1)
+        file_hash=$(echo "$line" | cut -d' ' -f2)
+
+        cat "$default_repo/objects/$file_hash" > "$curr_file"
+
+        if grep -E "^$curr_file .*$" "$default_repo/index" > /dev/null
+        then
+            tmp_idx=$(sed -E "s/^$curr_file .*$/$curr_file $file_hash/" "$default_repo/index")
+            echo "$tmp_idx" > "$default_repo/index"
+        fi 
+    done < "$default_repo/objects/$merge_tree"
+
+    # move pointer
+    new_info=$(sed -E "s/^$curr_branch .*$/$curr_branch $merge_tree/" "$default_repo/BRANCHES")
+    echo "$new_info" > "$default_repo/BRANCHES"
+
+    echo "$fast_forward"
+    exit 0
+fi 
