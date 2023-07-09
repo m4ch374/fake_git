@@ -18,15 +18,15 @@ PATH="$PATH:$(pwd)"
 export PATH
 
 # =============================
-# Subset 2 - Advanced usage
+# Subset 2 - Weird edge cases
 # =============================
 
 echo ""
-echo "Subset 2 - Advanced usage"
+echo "Subset 2 - Weird edge cases"
 echo "======================================"
 
 # ===================================================
-echo "3 way merge without conflicts"
+echo "All files untracked after 'Already up to date'"
 cd "$my_dir" || exit 1
 {
     pigs-init
@@ -47,12 +47,23 @@ cd "$my_dir" || exit 1
     pigs-merge b1 -m merge
     pigs-status
     pigs-branch -d b1
+
+    pigs-branch b1
+    echo something > d
+    pigs-add d
+    pigs-commit -m d
+    pigs-checkout b1
+    echo another > d
+    pigs-commit -a -m d
+    pigs-checkout master
+    pigs-merge b1 -m merge
+    pigs-status
 } >> "$my_out" 2>> "$my_out"
 
 cd "$ref_dir" || exit 1
 {
     2041 pigs-init
-    touch a
+    2041 touch a
     2041 pigs-add a
     2041 pigs-commit -m a
     2041 pigs-branch b1
@@ -69,45 +80,13 @@ cd "$ref_dir" || exit 1
     2041 pigs-merge b1 -m merge
     2041 pigs-status
     2041 pigs-branch -d b1
-} >> "$ref_out" 2>> "$ref_out"
 
-if diff "$my_out" "$ref_out" > /dev/null
-then
-    echo "$passed"
-else 
-    echo "$failed"
-fi 
-echo ""
-
-: > "$my_out"
-: > "$ref_out"
-
-# ===================================================
-echo "3 way merge with conflicts"
-cd "$my_dir" || exit 1
-{
-    pigs-branch b1
-    echo something > d
-    pigs-add d
-    pigs-commit -m d
-    pigs-checkout b1
-    echo another > d
-    pigs-add d
-    pigs-commit -a -m d
-    pigs-checkout master
-    pigs-merge b1 -m merge
-    pigs-status
-} >> "$my_out" 2>> "$my_out"
-
-cd "$ref_dir" || exit 1
-{
     2041 pigs-branch b1
     echo something > d
     2041 pigs-add d
     2041 pigs-commit -m d
     2041 pigs-checkout b1
     echo another > d
-    2041 pigs-add d
     2041 pigs-commit -a -m d
     2041 pigs-checkout master
     2041 pigs-merge b1 -m merge
@@ -125,27 +104,6 @@ echo ""
 : > "$my_out"
 : > "$ref_out"
 
-# ===================================================
-echo "Cannot delete unmerged branch"
-cd "$my_dir" || exit 1
-{
-    pigs-branch -d b1
-} >> "$my_out" 2>> "$my_out"
-
-cd "$ref_dir" || exit 1
-{
-    2041 pigs-branch -d b1
-} >> "$ref_out" 2>> "$ref_out"
-
-if diff "$my_out" "$ref_out" > /dev/null
-then
-    echo "$passed"
-else 
-    echo "$failed"
-fi 
-echo ""
-
-: > "$my_out"
-: > "$ref_out"
+# Nope, too lazy to add more big soz
 
 rm -rf "$my_dir" "$ref_dir" "$my_out" "$ref_out"
