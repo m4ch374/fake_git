@@ -124,5 +124,6 @@ fi
 curr_tree=$(grep -E "^$curr_branch .*$" "$branch_info" | cut -d' ' -f2)
 echo "$branch_input $curr_tree" >> "$branch_info"
 
-# cat logs
+# cat logs and commits
 cat "$default_repo/logs/$curr_branch" > "$default_repo/logs/$branch_input"
+cat "$default_repo/commits/$curr_branch" > "$default_repo/commits/$branch_input"

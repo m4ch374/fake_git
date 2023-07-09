@@ -80,8 +80,12 @@ get_branch() {
 
 get_common_tree() {
     incoming_commit=$(get_commit_num "$1")
+    incoming_branch=$(get_branch "$1")
 
     curr_branch=$(cat "$default_repo/HEAD")
+
+    common=$(mktemp)
+    comm -12 "$default_repo/commits/$incoming_branch" "$default_repo/commits/$curr_branch" > "$common"
 
     tmp_rec=$(mktemp)
     while IFS= read -r line
@@ -91,7 +95,8 @@ get_common_tree() {
         then
             echo "$line" >> "$tmp_rec"
         fi 
-    done < "$default_repo/commits/$curr_branch"
+    done < "$common"
+    rm "$common"
 
     sort -k1,1 "$tmp_rec" | tail -n1 | cut -d' ' -f2
     rm "$tmp_rec"
@@ -192,3 +197,42 @@ then
     echo "$fast_forward"
     exit 0
 fi 
+
+# Check for unmergable files
+sorted_curr_tree=$(mktemp)
+sort "$default_repo/objects/$curr_tree" | cut -d' ' -f1 > "$sorted_curr_tree"
+
+sorted_merge_tree=$(mktemp)
+sort "$default_repo/objects/$merge_tree" | cut -d' ' -f1 > "$sorted_merge_tree"
+
+intersected_files=$(mktemp)
+comm -12 "$sorted_curr_tree" "$sorted_merge_tree" > "$intersected_files"
+
+files_cant_merge=$(mktemp)
+while IFS= read -r file 
+do 
+    common_file_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$default_repo/objects/$common_tree")
+    merge_file_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$default_repo/objects/$merge_tree")
+    curr_file_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$default_repo/objects/$curr_tree")
+
+    if ! [ "$common_file_hash" = "$merge_file_hash" ] && ! [ "$merge_file_hash" = "$curr_file_hash" ]
+    then
+        echo "$file" >> "$files_cant_merge" 
+    fi 
+
+done < "$intersected_files"
+rm "$sorted_curr_tree"
+rm "$sorted_merge_tree"
+rm "$intersected_files"
+
+if [ -n "$(cat "$files_cant_merge")" ]
+then
+    echo "pigs-merge: error: These files can not be merged:" >&2
+    cat "$files_cant_merge" >&2
+    rm "$files_cant_merge"
+    exit 1
+fi 
+rm "$files_cant_merge"
+
+# 3 way merge
+
