@@ -21,7 +21,7 @@ then
     exit 1
 fi 
 
-if [ "$#" -ne 3 ] || echo "$1" | grep -E "^-" > /dev/null || echo "$3" | grep -E "^-" > /dev/null
+if [ "$#" -ne 3 ] || echo "$1" | grep -E "^-" > /dev/null || echo "$3" | grep -E "^-" > /dev/null || ! [ "$2" = "-m" ]
 then
     echo "$usage" >&2
     exit 1
@@ -282,7 +282,8 @@ do
         continue 
     fi 
 
-    echo "$curr_file $file_hash" >> "$tmp_tree"
+    echo "$curr_file $file_hash" >> "$tmp_tree" 
+    echo "$curr_file $file_hash" >> "$default_repo/index"
 done < "$default_repo/objects/$merge_tree"
 
 # populate cwd

@@ -79,10 +79,6 @@ then
     echo "$passed"
 else 
     echo "$failed"
-
-    cat "$my_out"
-    echo ""
-    cat "$ref_out"
 fi 
 echo ""
 

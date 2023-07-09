@@ -11,7 +11,7 @@ then
     exit 1
 fi 
 
-if [ "$#" -eq 0 ] || [ "$#" -gt 1 ]
+if [ "$#" -eq 0 ] || [ "$#" -gt 1 ] || echo "$1" | grep -E "^-" > /dev/null 
 then
     echo "usage: pigs-checkout <branch>" >&2
     exit 1
@@ -75,6 +75,40 @@ then
 fi 
 rm "$will_overwrite"
 
+# edit and add file to index
+while IFS= read -r line 
+do 
+    curr_file=$(echo "$line" | cut -d' ' -f1)
+    file_hash=$(echo "$line" | cut -d' ' -f2)
+
+    if test -f "$file_whitelist/$curr_file"
+    then 
+        continue
+    fi 
+
+    if grep -E "^$curr_file .*$" "$default_repo/index" > /dev/null
+    then
+        modded_index=$(sed -E "s/^$curr_file .*$/$curr_file $file_hash/" "$default_repo/index")
+        echo "$modded_index" > "$default_repo/index" 
+    else 
+        echo "$curr_file $file_hash" >> "$default_repo/index"
+    fi 
+done < "$target_tree_file"
+
+# remove file from index
+files=$(ls .)
+for file in $files
+do 
+    if test -f "$file_whitelist/$curr_file" || grep -E "^$file .*$" "$target_tree_file" > /dev/null
+    then
+        continue 
+    fi 
+
+    new_idx=$(sed -E "/^$file .*$/d" "$default_repo/index")
+    echo "$new_idx" > "$default_repo/index"
+done 
+
+# populate
 rm ./*
 while IFS= read -r line
 do 
@@ -89,21 +123,6 @@ for file in $whitelisted_files
 do 
     cat "$file_whitelist/$file" > "$file"
 done 
-
-# edit index
-while IFS= read -r line 
-do 
-    curr_file=$(echo "$line" | cut -d' ' -f1)
-    file_hash=$(echo "$line" | cut -d' ' -f2)
-
-    if test -f "$file_whitelist/$curr_file"
-    then 
-        continue
-    fi 
-
-    modded_index=$(sed -E "s/^$curr_file .*$/$curr_file $file_hash/" "$default_repo/index")
-    echo "$modded_index" > "$default_repo/index"
-done < "$target_tree_file"
 
 rm -r "$file_whitelist"
 

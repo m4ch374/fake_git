@@ -11,6 +11,14 @@ then
     exit 1
 fi 
 
+# cannot run before commit
+curr_branch=$(cat "$default_repo/HEAD")
+if [ -z "$(cat "$default_repo/logs/$curr_branch")" ]
+then
+    echo "pigs-branch: error: this command can not be run until after the first commit" >&2
+    exit 1
+fi 
+
 usage="usage: pigs-branch [-d] <branch>"
 if [ "$#" -gt 2 ]
 then
@@ -35,14 +43,6 @@ fi
 # =====================================
 # Main
 # =====================================
-
-# cannot run before commit
-curr_branch=$(cat "$default_repo/HEAD")
-if [ -z "$(cat "$default_repo/logs/$curr_branch")" ]
-then
-    echo "pigs-branch: error: this command can not be run until after the first commit" >&2
-    exit 1
-fi 
 
 # display all branches
 branch_info="$default_repo/BRANCHES"
