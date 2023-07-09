@@ -215,24 +215,97 @@ do
     merge_file_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$default_repo/objects/$merge_tree")
     curr_file_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$default_repo/objects/$curr_tree")
 
-    if ! [ "$common_file_hash" = "$merge_file_hash" ] && ! [ "$merge_file_hash" = "$curr_file_hash" ]
+    # screw it we ball
+    if ! [ "$common_file_hash" = "$merge_file_hash" ] && ! [ "$common_file_hash" = "$curr_file_hash" ]
     then
-        echo "$file" >> "$files_cant_merge" 
+        if [ -n "$merge_file_hash" ] && [ -n "$curr_file_hash" ]
+        then 
+            echo "$file" >> "$files_cant_merge" 
+        fi
     fi 
 
 done < "$intersected_files"
 rm "$sorted_curr_tree"
 rm "$sorted_merge_tree"
-rm "$intersected_files"
 
 if [ -n "$(cat "$files_cant_merge")" ]
 then
     echo "pigs-merge: error: These files can not be merged:" >&2
     cat "$files_cant_merge" >&2
     rm "$files_cant_merge"
+    rm "$intersected_files"
     exit 1
 fi 
 rm "$files_cant_merge"
 
-# 3 way merge
+# 3 way merge (by invoking commit)
 
+# Merge files
+tmp_tree=$(mktemp)
+while IFS= read -r file
+do 
+    common_file_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$default_repo/objects/$common_tree")
+    merge_file_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$default_repo/objects/$merge_tree")
+    curr_file_hash=$(sed -nE "s/^$file (.*)$/\1/p" "$default_repo/objects/$curr_tree")
+
+    if [ "$common_file_hash" = "$curr_file_hash" ]
+    then
+        echo "$file $merge_file_hash" >> "$tmp_tree"
+    else 
+        echo "$file $curr_file_hash" >> "$tmp_tree" 
+    fi 
+done < "$intersected_files"
+
+# Add files from curr tree
+while IFS= read -r line 
+do 
+    curr_file=$(echo "$line" | cut -d' ' -f1)
+    file_hash=$(echo "$line" | cut -d' ' -f2)
+
+    if grep -E "^$curr_file .*$" "$default_repo/objects/$common_tree" > /dev/null || grep -E "^$curr_file$" "$intersected_files" > /dev/null
+    then
+        continue 
+    fi 
+
+    echo "$curr_file $file_hash" >> "$tmp_tree"
+done < "$default_repo/objects/$curr_tree"
+
+# Add files from merge tree
+# copy and pasting bc im lazy
+while IFS= read -r line 
+do 
+    curr_file=$(echo "$line" | cut -d' ' -f1)
+    file_hash=$(echo "$line" | cut -d' ' -f2)
+
+    if grep -E "^$curr_file .*$" "$default_repo/objects/$common_tree" > /dev/null || grep -E "^$curr_file$" "$intersected_files" > /dev/null
+    then
+        continue 
+    fi 
+
+    echo "$curr_file $file_hash" >> "$tmp_tree"
+done < "$default_repo/objects/$merge_tree"
+
+# populate cwd
+# copy and pasting bc im lazy
+rm ./*
+while IFS= read -r line 
+do 
+    curr_file=$(echo "$line" | cut -d' ' -f1)
+    file_hash=$(echo "$line" | cut -d' ' -f2)
+
+    cat "$default_repo/objects/$file_hash" > "$curr_file"
+done < "$tmp_tree"
+rm "$tmp_tree"
+
+# merge log and commits
+new_log=$(merge_history "$input" "$default_repo/logs")
+echo "$new_log" > "$default_repo/logs/$curr_branch"
+
+new_commit=$(merge_history "$input" "$default_repo/commits")
+echo "$new_commit" > "$default_repo/commits/$curr_branch"
+
+# move pointer
+new_info=$(sed -E "s/^$curr_branch .*$/$curr_branch $merge_tree/" "$default_repo/BRANCHES")
+echo "$new_info" > "$default_repo/BRANCHES"
+
+eval pigs-commit -a -m "$3"
