@@ -14,6 +14,9 @@ ref_out=$(mktemp)
 passed="\033[32mPassed\e[0m"
 failed="\e[1;31mFailed\e[0m"
 
+PATH="$PATH:$(pwd)"
+export PATH
+
 # =============================
 # Subset 1 - Test errors
 # =============================

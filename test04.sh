@@ -18,69 +18,53 @@ PATH="$PATH:$(pwd)"
 export PATH
 
 # =============================
-# Subset 0 - Advanced usage
+# Subset 1 - Normal usage
 # =============================
 
 echo ""
-echo "Subset 0 - Advanced usage"
+echo "Subset 1 - Normal usage"
 echo "======================================"
 
 # ===================================================
-echo "Advanced usage"
+echo "Normal usage"
 cd "$my_dir" || exit 1
 {
     pigs-init
-    touch a b c
-    pigs-show :a
-    pigs-show :b
-    pigs-show :c
-    pigs-add a
-    pigs-log 
-    echo some >> a
-    pigs-commit -a -m "a"
-    pigs-show 0:a
-    pigs-log 
-    echo another >> b
-    echo more >> c
-    pigs-commit -a -m "no commits"
-    pigs-add b c 
+    echo hi > a
+    echo another > b
+    echo more > c
+    pigs-status
+    pigs-add a b c
+    pigs-rm --cached a
+    pigs-status
     pigs-commit -m "b c"
-    pigs-log 
-    pigs-show :b
-    pigs-show :c
+    pigs-show 0:a
     pigs-show 0:b
     pigs-show 0:c
-    pigs-show 1:b
-    pigs-show 1:c
-    pigs-log
+    cat a
+    pigs-rm a 
+    pigs-rm --force a
+    pigs-status
 } >> "$my_out" 2>> "$my_out"
 
 cd "$ref_dir" || exit 1
 {
     2041 pigs-init
-    touch a b c
-    2041 pigs-show :a
-    2041 pigs-show :b
-    2041 pigs-show :c
-    2041 pigs-add a
-    2041 pigs-log 
-    echo some >> a
-    2041 pigs-commit -a -m "a"
-    2041 pigs-show 0:a
-    2041 pigs-log 
-    echo another >> b
-    echo more >> c
-    2041 pigs-commit -a -m "no commits"
-    2041 pigs-add b c 
+    echo hi > a
+    echo another > b
+    echo more > c
+    2041 pigs-status
+    2041 pigs-add a b c
+    2041 pigs-rm --cached a
+    2041 pigs-status
     2041 pigs-commit -m "b c"
-    2041 pigs-log 
-    2041 pigs-show :b
-    2041 pigs-show :c
+    2041 pigs-show 0:a
     2041 pigs-show 0:b
     2041 pigs-show 0:c
-    2041 pigs-show 1:b
-    2041 pigs-show 1:c
-    2041 pigs-log
+    cat a
+    2041 pigs-rm a 
+    2041 pigs-rm --force a
+    2041 pigs-status
 } >> "$ref_out" 2>> "$ref_out"
 
 if diff "$my_out" "$ref_out" > /dev/null
